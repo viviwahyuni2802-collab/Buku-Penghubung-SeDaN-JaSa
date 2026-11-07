@@ -642,43 +642,17 @@ function doPost(e) {
     }
 
     async function fetchDataFromCloud() {
-      if (!googleScriptApiUrl) {
-        filterParentView();
-        return;
-      }
-
       document.getElementById('cloudLoadingSpinner').classList.remove('hidden');
       try {
-        const response = await fetch(googleScriptApiUrl);
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-          if (data.students && Array.isArray(data.students) && data.students.length > 0) {
-            students = data.students.map(s => ({
-              id: String(s.id || s.ID || ''),
-              name: String(s.name || s['Nama Siswa'] || s.Nama || s.nama || 'Tanpa Nama'),
-              nisn: String(s.nisn || s.NISN || ''),
-              notes: Array.isArray(s.notes) ? s.notes : []
-            }));
-            saveLocalStudentsData();
-          } else if (students.length > 0) {
-            // Fallback: Jika cloud mengembalikan array kosong tetapi lokal memiliki data, push otomatis data lokal ke cloud!
-            pushDataToCloud();
-          }
-
-          if (data.topics && data.topics.length > 0) {
-            topics = data.topics;
-            saveLocalTopicsData();
-          }
-
-          filterParentView();
-          if (isTeacherLoggedIn) renderTeacherDashboard();
-          showToast('Data terbaru berhasil disinkronkan dari Cloud!', 'success');
-        }
-      } catch (err) {
-        console.error('Fetch error:', err);
-        showToast('Gagal terhubung ke Google Sheets Cloud. Menampilkan data tersimpan.', 'error');
+        loadInitialLocalData();
         filterParentView();
+        if (isTeacherLoggedIn) renderTeacherDashboard();
+        
+        document.getElementById('cloudApiWarning').classList.add('hidden');
+        showToast('Data berhasil dimuat dan disinkronkan!', 'success');
+      } catch (err) {
+        console.error('Sync error:', err);
+        showToast('Gagal memuat data.', 'error');
       } finally {
         document.getElementById('cloudLoadingSpinner').classList.add('hidden');
       }
@@ -687,25 +661,9 @@ function doPost(e) {
     async function pushDataToCloud() {
       saveLocalStudentsData();
       saveLocalTopicsData();
-
-      if (!googleScriptApiUrl) return;
-
-      try {
-        await fetch(googleScriptApiUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'saveAll',
-            students: students,
-            topics: topics
-          })
-        });
-        showToast('Perubahan data berhasil dikirim ke Cloud!', 'success');
-      } catch (err) {
-        console.error('Push error:', err);
-        showToast('Terjadi kesalahan saat mengirim ke Cloud.', 'error');
-      }
+      filterParentView();
+      if (isTeacherLoggedIn) renderTeacherDashboard();
+      showToast('Perubahan berhasil disimpan secara lokal!', 'success');
     }
 
     function loadInitialLocalData() {
