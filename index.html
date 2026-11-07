@@ -495,91 +495,11 @@
     let topics = [];
     let tempUploadedLogoBase64 = null;
     let googleScriptApiUrl = '';
+    let pendingLocalMigration = false;
+    let migrationInProgress = false;
 
-    const APPS_SCRIPT_TEMPLATE = `// SKRIP GOOGLE APPS SCRIPT UNTUK CLOUD EBOOK SDN JARIT 01
-function doGet(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheetStudents = ss.getSheetByName("Siswa") || ss.insertSheet("Siswa");
-  var sheetNotes = ss.getSheetByName("Catatan") || ss.insertSheet("Catatan");
-  var sheetTopics = ss.getSheetByName("Topik") || ss.insertSheet("Topik");
-  
-  var studentsData = sheetStudents.getDataRange().getValues();
-  var notesData = sheetNotes.getDataRange().getValues();
-  var topicsData = sheetTopics.getDataRange().getValues();
-  
-  var topics = [];
-  for (var i = 1; i < topicsData.length; i++) {
-    if (topicsData[i][0]) topics.push(topicsData[i][0]);
-  }
-  if (topics.length === 0) topics = ['Catatan Perkembangan Anak', 'Catatan Kegiatan Sekolah', 'Tugas & Pembelajaran Rumah'];
+    const APPS_SCRIPT_TEMPLATE = "// GOOGLE APPS SCRIPT — jalankan dari Extensions > Apps Script pada Google Sheets\nfunction doGet(e) {\n  var data = readDatabase_();\n  var json = JSON.stringify(data);\n  var callback = e && e.parameter ? e.parameter.callback : '';\n  if (callback) {\n    if (!/^[a-zA-Z_$][0-9a-zA-Z_$\\.]*$/.test(callback)) {\n      return ContentService.createTextOutput('/* callback tidak valid */')\n        .setMimeType(ContentService.MimeType.JAVASCRIPT);\n    }\n    return ContentService.createTextOutput(callback + '(' + json + ');')\n      .setMimeType(ContentService.MimeType.JAVASCRIPT);\n  }\n  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);\n}\n\nfunction doPost(e) {\n  var lock = LockService.getScriptLock();\n  try {\n    lock.waitLock(30000);\n    var payload = JSON.parse((e && e.postData && e.postData.contents) || '{}');\n    if (payload.action !== 'saveAll') throw new Error('Aksi tidak dikenal.');\n    var ss = SpreadsheetApp.getActiveSpreadsheet();\n    if (!ss) throw new Error('Skrip harus dibuat dari Google Sheets melalui Extensions > Apps Script.');\n    var shS = getSheet_(ss, 'Siswa', ['id', 'name', 'nisn']);\n    var shN = getSheet_(ss, 'Catatan', ['StudentID', 'NoteID', 'Topik', 'Isi Catatan', 'Tanggal']);\n    var shT = getSheet_(ss, 'Topik', ['Nama Topik']);\n\n    var students = Array.isArray(payload.students) ? payload.students : [];\n    var topics = Array.isArray(payload.topics) ? payload.topics : [];\n    var studentRows = [['id', 'name', 'nisn']];\n    var noteRows = [['StudentID', 'NoteID', 'Topik', 'Isi Catatan', 'Tanggal']];\n    students.forEach(function(s, idx) {\n      var sid = String(s.id || ('std_' + idx + '_' + new Date().getTime()));\n      studentRows.push([sid, String(s.name || ''), String(s.nisn || '')]);\n      (Array.isArray(s.notes) ? s.notes : []).forEach(function(n) {\n        noteRows.push([sid, String(n.id || ''), String(n.topic || ''),\n          String(n.content || ''), String(n.date || '')]);\n      });\n    });\n    var topicRows = [['Nama Topik']].concat(topics.map(function(t) { return [String(t)]; }));\n\n    shS.clearContents(); shN.clearContents(); shT.clearContents();\n    shS.getRange(1, 1, studentRows.length, 3).setValues(studentRows);\n    shN.getRange(1, 1, noteRows.length, 5).setValues(noteRows);\n    shT.getRange(1, 1, topicRows.length, 1).setValues(topicRows);\n    SpreadsheetApp.flush();\n    return ContentService.createTextOutput(JSON.stringify({status:'success'}))\n      .setMimeType(ContentService.MimeType.JSON);\n  } catch (err) {\n    return ContentService.createTextOutput(JSON.stringify({status:'error', message:String(err)}))\n      .setMimeType(ContentService.MimeType.JSON);\n  } finally {\n    try { lock.releaseLock(); } catch (ignore) {}\n  }\n}\n\nfunction readDatabase_() {\n  var ss = SpreadsheetApp.getActiveSpreadsheet();\n  if (!ss) throw new Error('Spreadsheet tidak ditemukan.');\n  var shS = getSheet_(ss, 'Siswa', ['id', 'name', 'nisn']);\n  var shN = getSheet_(ss, 'Catatan', ['StudentID', 'NoteID', 'Topik', 'Isi Catatan', 'Tanggal']);\n  var shT = getSheet_(ss, 'Topik', ['Nama Topik']);\n  var sRows = shS.getDataRange().getDisplayValues();\n  var nRows = shN.getDataRange().getDisplayValues();\n  var tRows = shT.getDataRange().getDisplayValues();\n  var notesByStudent = {};\n  nRows.slice(1).forEach(function(r) {\n    if (!r[0]) return;\n    if (!notesByStudent[r[0]]) notesByStudent[r[0]] = [];\n    notesByStudent[r[0]].push({id:r[1], topic:r[2], content:r[3], date:r[4]});\n  });\n  var students = sRows.slice(1).filter(function(r) { return r[0] || r[1]; }).map(function(r) {\n    var id = String(r[0] || '');\n    return {id:id, name:String(r[1] || ''), nisn:String(r[2] || ''),\n      notes:notesByStudent[id] || []};\n  });\n  var topics = tRows.slice(1).map(function(r) { return r[0]; }).filter(String);\n  if (!topics.length) topics = ['Catatan Perkembangan Anak', 'Catatan Kegiatan Sekolah', 'Tugas & Pembelajaran Rumah'];\n  return {status:'success', students:students, topics:topics};\n}\n\nfunction getSheet_(ss, name, headers) {\n  var sh = ss.getSheetByName(name) || ss.insertSheet(name);\n  if (sh.getLastRow() === 0) sh.getRange(1, 1, 1, headers.length).setValues([headers]);\n  return sh;\n}";
 
-  var students = [];
-  for (var i = 1; i < studentsData.length; i++) {
-    var row = studentsData[i];
-    if (row[0] || row[1]) {
-      var id = String(row[0] || ('std_' + i));
-      var name = String(row[1] || 'Tanpa Nama');
-      var nisn = String(row[2] || '');
-      
-      var studentNotes = [];
-      for (var j = 1; j < notesData.length; j++) {
-        var noteRow = notesData[j];
-        if (String(noteRow[0]) === id || String(noteRow[0]) === String(row[0])) {
-          studentNotes.push({
-            id: String(noteRow[1] || ''),
-            topic: String(noteRow[2] || ''),
-            content: String(noteRow[3] || ''),
-            date: String(noteRow[4] || '')
-          });
-        }
-      }
-      students.push({ id: id, name: name, nisn: nisn, notes: studentNotes });
-    }
-  }
-
-  var result = { status: "success", students: students, topics: topics };
-  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-}
-
-function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    
-    if (data.action === "saveAll") {
-      var sheetStudents = ss.getSheetByName("Siswa") || ss.insertSheet("Siswa");
-      var sheetNotes = ss.getSheetByName("Catatan") || ss.insertSheet("Catatan");
-      var sheetTopics = ss.getSheetByName("Topik") || ss.insertSheet("Topik");
-      
-      sheetStudents.clear();
-      sheetNotes.clear();
-      sheetTopics.clear();
-      
-      sheetStudents.appendRow(["id", "name", "nisn"]);
-      sheetNotes.appendRow(["StudentID", "NoteID", "Topik", "Isi Catatan", "Tanggal"]);
-      sheetTopics.appendRow(["Nama Topik"]);
-      
-      if (data.topics) {
-        data.topics.forEach(function(t) { sheetTopics.appendRow([t]); });
-      }
-      
-      if (data.students) {
-        data.students.forEach(function(s, idx) {
-          var uniqueId = s.id ? String(s.id) : ('std_auto_' + idx + '_' + Date.now());
-          sheetStudents.appendRow([uniqueId, s.name, s.nisn]);
-          if (s.notes) {
-            s.notes.forEach(function(n) {
-              sheetNotes.appendRow([uniqueId, n.id, n.topic, n.content, n.date]);
-            });
-          }
-        });
-      }
-      return ContentService.createTextOutput(JSON.stringify({status: "success"})).setMimeType(ContentService.MimeType.JSON);
-    }
-  } catch(err) {
-    return ContentService.createTextOutput(JSON.stringify({status: "error", message: err.toString()})).setMimeType(ContentService.MimeType.JSON);
-  }
-}`;
 
     window.onload = function() {
       document.getElementById('yearSpan').textContent = new Date().getFullYear();
@@ -641,29 +561,114 @@ function doPost(e) {
       }
     }
 
+
+    // Sinkronisasi cloud lintas perangkat: Google Apps Script + Google Sheets.
+    function jsonpRequest(url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = '__sdnJaritJsonp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+        const script = document.createElement('script');
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error('Koneksi ke Google Sheets melewati batas waktu.'));
+        }, 20000);
+        function cleanup() {
+          clearTimeout(timer);
+          delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+        window[callbackName] = data => { cleanup(); resolve(data); };
+        script.onerror = () => { cleanup(); reject(new Error('Tidak dapat mengakses Google Apps Script. Periksa URL dan izin Web App.')); };
+        script.src = url + (url.includes('?') ? '&' : '?') +
+          'callback=' + encodeURIComponent(callbackName) + '&_=' + Date.now();
+        document.head.appendChild(script);
+      });
+    }
+
     async function fetchDataFromCloud() {
-      document.getElementById('cloudLoadingSpinner').classList.remove('hidden');
+      const spinner = document.getElementById('cloudLoadingSpinner');
+      spinner.classList.remove('hidden');
       try {
+        if (!googleScriptApiUrl) throw new Error('URL Google Apps Script belum diatur.');
+        const result = await jsonpRequest(googleScriptApiUrl);
+        if (!result || result.status !== 'success' || !Array.isArray(result.students)) {
+          throw new Error((result && result.message) || 'Format data dari Google Sheets tidak sesuai.');
+        }
+        const cloudStudents = result.students.map(s => ({
+          id: String(s.id || ''),
+          name: String(s.name || ''),
+          nisn: String(s.nisn || ''),
+          notes: Array.isArray(s.notes) ? s.notes : []
+        }));
+        const cachedStudents = JSON.parse(localStorage.getItem(STORAGE_KEY_STUDENTS) || '[]');
+        // Jangan menimpa data lama di browser guru jika spreadsheet cloud masih kosong.
+        if (cloudStudents.length === 0 && cachedStudents.length > 0) {
+          students = cachedStudents;
+          topics = JSON.parse(localStorage.getItem(STORAGE_KEY_TOPICS) || JSON.stringify(
+            ['Catatan Perkembangan Anak', 'Catatan Kegiatan Sekolah', 'Tugas & Pembelajaran Rumah']));
+          pendingLocalMigration = true;
+          if (isTeacherLoggedIn && !migrationInProgress) {
+            if (confirm('Google Sheets masih kosong, tetapi ditemukan ' + students.length +
+              ' data siswa tersimpan di browser ini. Kirim data lama tersebut ke Google Sheets sekarang?')) {
+              migrationInProgress = true;
+              await pushDataToCloud();
+              migrationInProgress = false;
+              return;
+            }
+          } else if (!isTeacherLoggedIn) {
+            showToast('Data lama ditemukan di perangkat guru. Login guru untuk memindahkannya ke Google Sheets.', 'info');
+          }
+        } else {
+          students = cloudStudents;
+          topics = Array.isArray(result.topics) && result.topics.length
+            ? result.topics : ['Catatan Perkembangan Anak', 'Catatan Kegiatan Sekolah', 'Tugas & Pembelajaran Rumah'];
+          pendingLocalMigration = false;
+          saveLocalStudentsData();
+          saveLocalTopicsData();
+        }
+        saveLocalStudentsData();
+        saveLocalTopicsData();
+        filterParentView();
+        if (isTeacherLoggedIn) renderTeacherDashboard();
+        document.getElementById('cloudApiWarning').classList.add('hidden');
+        updateApiStatusBadge();
+        showToast('Data terbaru berhasil dimuat dari Google Sheets.', 'success');
+      } catch (err) {
+        console.error('Cloud read error:', err);
+        // Cache lokal hanya sebagai cadangan jika jaringan/API sedang bermasalah.
         loadInitialLocalData();
         filterParentView();
         if (isTeacherLoggedIn) renderTeacherDashboard();
-        
-        document.getElementById('cloudApiWarning').classList.add('hidden');
-        showToast('Data berhasil dimuat dan disinkronkan!', 'success');
-      } catch (err) {
-        console.error('Sync error:', err);
-        showToast('Gagal memuat data.', 'error');
+        document.getElementById('cloudApiWarning').classList.remove('hidden');
+        showToast('Data cloud belum dapat dimuat: ' + err.message, 'error');
       } finally {
-        document.getElementById('cloudLoadingSpinner').classList.add('hidden');
+        spinner.classList.add('hidden');
       }
     }
 
     async function pushDataToCloud() {
+      if (!googleScriptApiUrl) {
+        showToast('Data belum dikirim. Atur URL Google Apps Script terlebih dahulu.', 'error');
+        return false;
+      }
       saveLocalStudentsData();
       saveLocalTopicsData();
-      filterParentView();
-      if (isTeacherLoggedIn) renderTeacherDashboard();
-      showToast('Perubahan berhasil disimpan secara lokal!', 'success');
+      try {
+        // text/plain + no-cors menghindari preflight CORS pada Google Apps Script.
+        // Respons POST bersifat opaque; keberhasilan diverifikasi dengan membaca ulang data.
+        await fetch(googleScriptApiUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'saveAll', students: students, topics: topics })
+        });
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        await fetchDataFromCloud();
+        return true;
+      } catch (err) {
+        console.error('Cloud write error:', err);
+        showToast('Gagal mengirim data ke Google Sheets: ' + err.message, 'error');
+        return false;
+      }
     }
 
     function loadInitialLocalData() {
@@ -805,6 +810,7 @@ function doPost(e) {
         showTeacherDashboard();
         showToast('Berhasil masuk sebagai Guru!', 'success');
         document.getElementById('teacherPasswordInput').value = '';
+        if (pendingLocalMigration) fetchDataFromCloud();
       } else {
         showToast('Kata sandi salah!', 'error');
       }
