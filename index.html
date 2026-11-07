@@ -195,7 +195,6 @@
               class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 outline-none text-sm font-medium">
             <i class="fa-solid fa-key absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
           </div>
-          <p class="text-[11px] text-slate-400 mt-1">Kata sandi default: <code class="bg-slate-100 px-1 py-0.5 rounded font-bold text-slate-600">adminsedanjasa</code></p>
         </div>
 
         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-md text-sm flex items-center justify-center gap-2">
@@ -594,12 +593,10 @@ function doPost(e) {
       renderAuthNav();
       updateApiStatusBadge();
 
-      // Cek hash URL untuk shortcut login (#login)
       if (window.location.hash === '#login') {
         showLoginView();
       }
 
-      // Memaksa penarikan data Cloud secara otomatis setiap halaman dibuka
       if (googleScriptApiUrl) {
         document.getElementById('cloudApiWarning').classList.add('hidden');
         fetchDataFromCloud();
@@ -609,14 +606,12 @@ function doPost(e) {
       }
     };
 
-    // Pendengar perubahan Hash di URL
     window.onhashchange = function() {
       if (window.location.hash === '#login') {
         showLoginView();
       }
     };
 
-    // UPDATE API STATUS BADGE
     function updateApiStatusBadge() {
       const badge = document.getElementById('apiStatusBadge');
       const cloudBadge = document.getElementById('cloudStatusBadge');
@@ -646,7 +641,6 @@ function doPost(e) {
       }
     }
 
-    // FETCH DATA FROM GOOGLE SHEETS CLOUD
     async function fetchDataFromCloud() {
       if (!googleScriptApiUrl) {
         filterParentView();
@@ -659,19 +653,23 @@ function doPost(e) {
         const data = await response.json();
         
         if (data.status === 'success') {
-          if (data.students && Array.isArray(data.students)) {
-            // Pemetaan fleksibel data dari Google Sheets
+          if (data.students && Array.isArray(data.students) && data.students.length > 0) {
             students = data.students.map(s => ({
               id: String(s.id || s.ID || ''),
               name: String(s.name || s['Nama Siswa'] || s.Nama || s.nama || 'Tanpa Nama'),
               nisn: String(s.nisn || s.NISN || ''),
               notes: Array.isArray(s.notes) ? s.notes : []
             }));
+            saveLocalStudentsData();
+          } else if (students.length > 0) {
+            // Fallback: Jika cloud mengembalikan array kosong tetapi lokal memiliki data, push otomatis data lokal ke cloud!
+            pushDataToCloud();
           }
-          if (data.topics && data.topics.length > 0) topics = data.topics;
 
-          saveLocalStudentsData();
-          saveLocalTopicsData();
+          if (data.topics && data.topics.length > 0) {
+            topics = data.topics;
+            saveLocalTopicsData();
+          }
 
           filterParentView();
           if (isTeacherLoggedIn) renderTeacherDashboard();
@@ -686,7 +684,6 @@ function doPost(e) {
       }
     }
 
-    // PUSH DATA TO GOOGLE SHEETS CLOUD
     async function pushDataToCloud() {
       saveLocalStudentsData();
       saveLocalTopicsData();
@@ -711,7 +708,6 @@ function doPost(e) {
       }
     }
 
-    // LOCAL DATA FALLBACK
     function loadInitialLocalData() {
       const storedTopics = localStorage.getItem(STORAGE_KEY_TOPICS);
       const storedStudents = localStorage.getItem(STORAGE_KEY_STUDENTS);
@@ -735,7 +731,6 @@ function doPost(e) {
       localStorage.setItem(STORAGE_KEY_TOPICS, JSON.stringify(topics));
     }
 
-    // LOGO HEADER RENDERER
     function renderLogoHeader() {
       const box = document.getElementById('headerLogoBox');
       const savedLogo = localStorage.getItem(STORAGE_KEY_CUSTOM_LOGO);
@@ -806,7 +801,6 @@ function doPost(e) {
       }
     }
 
-    // AUTH & NAVIGATION
     function renderAuthNav() {
       const area = document.getElementById('navAuthArea');
       if (isTeacherLoggedIn) {
@@ -854,7 +848,7 @@ function doPost(e) {
         showToast('Berhasil masuk sebagai Guru!', 'success');
         document.getElementById('teacherPasswordInput').value = '';
       } else {
-        showToast('Kata sandi salah! Gunakan: adminsedanjasa', 'error');
+        showToast('Kata sandi salah!', 'error');
       }
     }
 
@@ -872,7 +866,6 @@ function doPost(e) {
       renderTeacherDashboard();
     }
 
-    // PARENT VIEW FILTER & CETAK
     function filterParentView() {
       const q = document.getElementById('parentSearchInput').value.toLowerCase().trim();
       const container = document.getElementById('parentStudentList');
@@ -945,7 +938,6 @@ function doPost(e) {
       window.print();
     }
 
-    // TEACHER DASHBOARD RENDER
     function renderTeacherDashboard() {
       document.getElementById('statTotalStudents').textContent = students.length;
       document.getElementById('statTotalTopics').textContent = topics.length;
@@ -1016,7 +1008,6 @@ function doPost(e) {
       });
     }
 
-    // EXCEL / CSV IMPORT PARSER
     function openImportModal() {
       document.getElementById('excelFileInput').value = '';
       document.getElementById('excelPasteTextArea').value = '';
@@ -1105,7 +1096,6 @@ function doPost(e) {
       }
     }
 
-    // CRUD ACTIONS
     function deleteStudent(id) {
       if (confirm('Hapus data siswa ini beserta catatannya?')) {
         students = students.filter(s => s.id !== id);
