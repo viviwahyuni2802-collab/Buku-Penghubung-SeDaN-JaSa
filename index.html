@@ -591,7 +591,9 @@ function doPost(e) {
       renderAuthNav();
       updateApiStatusBadge();
 
+      // Memaksa penarikan data Cloud secara otomatis setiap halaman dibuka
       if (googleScriptApiUrl) {
+        document.getElementById('cloudApiWarning').classList.add('hidden');
         fetchDataFromCloud();
       } else {
         document.getElementById('cloudApiWarning').classList.remove('hidden');
@@ -1048,7 +1050,8 @@ function doPost(e) {
               lines.push(`${row[0]}, ${row[1]}`);
             }
           });
-          document.getElementById('excelPasteTextArea').value = lines.join('\n');
+          document.getElementById('excelPasteTextArea').value = lines.join('
+');
         } catch (err) {
           showToast('Gagal membaca file Excel.', 'error');
         }
@@ -1063,14 +1066,15 @@ function doPost(e) {
         return;
       }
 
-      const lines = text.split(/\r?\n/);
+      const lines = text.split(/?
+/);
       let count = 0;
 
       lines.forEach((line, idx) => {
         if (!line.trim()) return;
         if (idx === 0 && (line.toLowerCase().includes('nama') || line.toLowerCase().includes('nisn'))) return;
 
-        const parts = line.split(/[,;\t]/).map(p => p.trim().replace(/^["']|["']$/g, ''));
+        const parts = line.split(/[,;	]/).map(p => p.trim().replace(/^["']|["']$/g, ''));
         if (parts.length >= 2) {
           const name = parts[0];
           const nisn = parts[1];
@@ -1218,7 +1222,7 @@ function doPost(e) {
 
     function escapeJS(str) {
       if (!str) return '';
-      return str.replace(/'/g, "\\'");
+      return str.replace(/'/g, "\'");
     }
   </script>
 </body>
