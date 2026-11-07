@@ -516,19 +516,21 @@ function doGet(e) {
 
   var students = [];
   for (var i = 1; i < studentsData.length; i++) {
-    if (studentsData[i][0]) {
-      var id = String(studentsData[i][0]);
-      var name = String(studentsData[i][1]);
-      var nisn = String(studentsData[i][2]);
+    var row = studentsData[i];
+    if (row[0] || row[1]) {
+      var id = String(row[0] || ('std_' + i));
+      var name = String(row[1] || 'Tanpa Nama');
+      var nisn = String(row[2] || '');
       
       var studentNotes = [];
       for (var j = 1; j < notesData.length; j++) {
-        if (String(notesData[j][0]) === id) {
+        var noteRow = notesData[j];
+        if (String(noteRow[0]) === id || String(noteRow[0]) === String(row[0])) {
           studentNotes.push({
-            id: String(notesData[j][1]),
-            topic: String(notesData[j][2]),
-            content: String(notesData[j][3]),
-            date: String(notesData[j][4])
+            id: String(noteRow[1] || ''),
+            topic: String(noteRow[2] || ''),
+            content: String(noteRow[3] || ''),
+            date: String(noteRow[4] || '')
           });
         }
       }
@@ -554,7 +556,7 @@ function doPost(e) {
       sheetNotes.clear();
       sheetTopics.clear();
       
-      sheetStudents.appendRow(["ID", "Nama Siswa", "NISN"]);
+      sheetStudents.appendRow(["id", "name", "nisn"]);
       sheetNotes.appendRow(["StudentID", "NoteID", "Topik", "Isi Catatan", "Tanggal"]);
       sheetTopics.appendRow(["Nama Topik"]);
       
@@ -563,11 +565,12 @@ function doPost(e) {
       }
       
       if (data.students) {
-        data.students.forEach(function(s) {
-          sheetStudents.appendRow([s.id, s.name, s.nisn]);
+        data.students.forEach(function(s, idx) {
+          var uniqueId = s.id ? String(s.id) : ('std_auto_' + idx + '_' + Date.now());
+          sheetStudents.appendRow([uniqueId, s.name, s.nisn]);
           if (s.notes) {
             s.notes.forEach(function(n) {
-              sheetNotes.appendRow([s.id, n.id, n.topic, n.content, n.date]);
+              sheetNotes.appendRow([uniqueId, n.id, n.topic, n.content, n.date]);
             });
           }
         });
@@ -591,6 +594,11 @@ function doPost(e) {
       renderAuthNav();
       updateApiStatusBadge();
 
+      // Cek hash URL untuk shortcut login (#login)
+      if (window.location.hash === '#login') {
+        showLoginView();
+      }
+
       // Memaksa penarikan data Cloud secara otomatis setiap halaman dibuka
       if (googleScriptApiUrl) {
         document.getElementById('cloudApiWarning').classList.add('hidden');
@@ -598,6 +606,13 @@ function doPost(e) {
       } else {
         document.getElementById('cloudApiWarning').classList.remove('hidden');
         switchToParentMode();
+      }
+    };
+
+    // Pendengar perubahan Hash di URL
+    window.onhashchange = function() {
+      if (window.location.hash === '#login') {
+        showLoginView();
       }
     };
 
@@ -624,7 +639,7 @@ function doPost(e) {
       if (googleScriptApiUrl) {
         document.getElementById('cloudApiWarning').classList.add('hidden');
         fetchDataFromCloud();
-        showToast('URL Google Apps Script disimpandan sedang mensinkronkan data Cloud!', 'success');
+        showToast('URL Google Apps Script disimpan dan sedang mensinkronkan data Cloud!', 'success');
       } else {
         document.getElementById('cloudApiWarning').classList.remove('hidden');
         showToast('URL API dikosongkan. Kembali ke Mode Offline Lokal.', 'info');
@@ -644,7 +659,15 @@ function doPost(e) {
         const data = await response.json();
         
         if (data.status === 'success') {
-          if (data.students) students = data.students;
+          if (data.students && Array.isArray(data.students)) {
+            // Pemetaan fleksibel data dari Google Sheets
+            students = data.students.map(s => ({
+              id: String(s.id || s.ID || ''),
+              name: String(s.name || s['Nama Siswa'] || s.Nama || s.nama || 'Tanpa Nama'),
+              nisn: String(s.nisn || s.NISN || ''),
+              notes: Array.isArray(s.notes) ? s.notes : []
+            }));
+          }
           if (data.topics && data.topics.length > 0) topics = data.topics;
 
           saveLocalStudentsData();
@@ -701,26 +724,6 @@ function doPost(e) {
 
       if (storedStudents) {
         students = JSON.parse(storedStudents);
-      } else {
-        const today = new Date().toISOString().split('T')[0];
-        students = [
-          {
-            id: 'std_1',
-            name: 'Ahmad Fauzi',
-            nisn: '1234567890',
-            notes: [
-              { id: 'n1', topic: 'Catatan Perkembangan Anak', content: 'Ahmad menunjukkan pemahaman yang sangat baik pada mata pelajaran Matematika.', date: today }
-            ]
-          },
-          {
-            id: 'std_2',
-            name: 'Siti Nur Aini',
-            nisn: '0987654321',
-            notes: [
-              { id: 'n2', topic: 'Catatan Kegiatan Sekolah', content: 'Siti sangat aktif dalam kegiatan senam pagi bersama.', date: today }
-            ]
-          }
-        ];
       }
     }
 
@@ -875,7 +878,7 @@ function doPost(e) {
       const container = document.getElementById('parentStudentList');
       container.innerHTML = '';
 
-      const filtered = students.filter(s => s.name.toLowerCase().includes(q) || s.nisn.includes(q));
+      const filtered = students.filter(s => (s.name && s.name.toLowerCase().includes(q)) || (s.nisn && s.nisn.includes(q)));
       document.getElementById('studentCountBadge').textContent = `${filtered.length} Siswa`;
 
       if (filtered.length === 0) {
@@ -953,7 +956,7 @@ function doPost(e) {
       const container = document.getElementById('teacherStudentTable');
       container.innerHTML = '';
 
-      const filtered = students.filter(s => s.name.toLowerCase().includes(q) || s.nisn.includes(q));
+      const filtered = students.filter(s => (s.name && s.name.toLowerCase().includes(q)) || (s.nisn && s.nisn.includes(q)));
 
       if (filtered.length === 0) {
         container.innerHTML = `
@@ -1050,8 +1053,7 @@ function doPost(e) {
               lines.push(`${row[0]}, ${row[1]}`);
             }
           });
-          document.getElementById('excelPasteTextArea').value = lines.join('
-');
+          document.getElementById('excelPasteTextArea').value = lines.join('\n');
         } catch (err) {
           showToast('Gagal membaca file Excel.', 'error');
         }
@@ -1066,15 +1068,14 @@ function doPost(e) {
         return;
       }
 
-      const lines = text.split(/?
-/);
+      const lines = text.split(/\r?\n/);
       let count = 0;
 
       lines.forEach((line, idx) => {
         if (!line.trim()) return;
         if (idx === 0 && (line.toLowerCase().includes('nama') || line.toLowerCase().includes('nisn'))) return;
 
-        const parts = line.split(/[,;	]/).map(p => p.trim().replace(/^["']|["']$/g, ''));
+        const parts = line.split(/[,;\t]/).map(p => p.trim().replace(/^["']|["']$/g, ''));
         if (parts.length >= 2) {
           const name = parts[0];
           const nisn = parts[1];
@@ -1222,7 +1223,7 @@ function doPost(e) {
 
     function escapeJS(str) {
       if (!str) return '';
-      return str.replace(/'/g, "\'");
+      return str.replace(/'/g, "\\'");
     }
   </script>
 </body>
