@@ -583,7 +583,7 @@ function doPost(e) {
       document.getElementById('yearSpan').textContent = new Date().getFullYear();
       document.getElementById('scriptCodeArea').value = APPS_SCRIPT_TEMPLATE;
       
-      googleScriptApiUrl = localStorage.getItem(STORAGE_KEY_API_URL) || '';
+      googleScriptApiUrl = localStorage.getItem(STORAGE_KEY_API_URL) || 'https://script.google.com/macros/s/AKfycbx_WVmkdtMXf2NSbpIgHP8A3JDChcvxe9KMS9jVnIb-EydnOtukkdQPNdDSkibr_agK/exec';
       document.getElementById('googleScriptApiUrlInput').value = googleScriptApiUrl;
 
       loadInitialLocalData();
