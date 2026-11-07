@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>eBook Penghubung - SD Negeri Jarit 01</title>
+  <title>eBook Penghubung - SD Negeri Jarit 01 (Cloud Sync)</title>
   
-  <!-- Tailwind CSS -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Font Inter -->
+  <!-- Google Fonts: Inter -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- SheetJS Library for Excel (.xlsx, .xls) Parsing -->
+  <!-- SheetJS untuk Parsing File Excel lokal (.xlsx, .csv) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <script>
@@ -26,23 +26,46 @@
     }
   </script>
   <style>
-    /* Prevent overflow layout bugs */
     html, body {
       max-width: 100%;
       overflow-x: hidden;
+    }
+
+    /* Print styling khusus untuk tombol Cetak / PDF */
+    @media print {
+      body {
+        background-color: #fff !important;
+        color: #000 !important;
+      }
+      header, footer, #navAuthArea, #parentSearchArea, #teacherDashboard, #loginView, .no-print, button {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      .print-card {
+        border: 2px solid #000 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid;
+        margin-bottom: 20px !important;
+        padding: 20px !important;
+        border-radius: 8px !important;
+      }
     }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col justify-between selection:bg-yellow-200">
 
-  <!-- HEADER APLIKASI RAPI & TERSTRUKTUR -->
-  <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40 border-b-4 border-yellow-400">
+  <!-- ========================================== -->
+  <!-- HEADER SEKOLAH & BRANDING -->
+  <!-- ========================================== -->
+  <header class="bg-slate-900 text-white shadow-lg sticky top-0 z-40 border-b-4 border-yellow-400 no-print">
     <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-4">
       
       <!-- LOGO & BRANDING SEKOLAH -->
       <div class="flex items-center gap-4 text-center sm:text-left w-full sm:w-auto justify-center sm:justify-start">
         
-        <!-- CONTAINER LOGO (PLACEHOLDER / UPLOAD) -->
+        <!-- LOGO PLACEHOLDER / UPLOAD -->
         <div onclick="openLogoUploadModal()" class="relative group cursor-pointer flex-shrink-0" title="Klik untuk mengunggah logo sekolah">
           <div id="headerLogoBox" class="w-16 h-16 rounded-xl border-2 border-dashed border-slate-600 group-hover:border-yellow-400 bg-slate-800 flex flex-col items-center justify-center p-1 transition overflow-hidden shadow-inner">
             <!-- Rendered by JS -->
@@ -52,7 +75,7 @@
           </div>
         </div>
 
-        <!-- TEKS HEADLINE -->
+        <!-- JUDUL & SLOGAN RESMI -->
         <div class="flex flex-col">
           <h1 class="text-base sm:text-lg font-extrabold text-yellow-400 tracking-wide leading-tight">
             eBOOK PENGHUBUNG GURU DAN ORANG TUA
@@ -66,18 +89,34 @@
         </div>
       </div>
 
-      <!-- NAVIGASI / AKSI AUTH GURU -->
+      <!-- NAVIGASI & STATUS MODE GURU -->
       <div id="navAuthArea" class="flex items-center gap-2 flex-shrink-0">
         <!-- Rendered by JS -->
       </div>
     </div>
   </header>
 
+  <!-- ========================================== -->
   <!-- KONTEN UTAMA APLIKASI -->
+  <!-- ========================================== -->
   <main class="max-w-6xl mx-auto w-full px-4 py-6 flex-grow">
 
-    <!-- ALERT TOAST SYSTEM -->
-    <div id="toastAlert" class="hidden mb-4 p-4 rounded-xl shadow-md text-sm font-semibold transition-all duration-300"></div>
+    <!-- INDIKATOR STATUS CLOUD / WARNING API -->
+    <div id="cloudApiWarning" class="hidden mb-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-xl text-xs text-amber-900 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div class="flex items-start gap-2">
+        <i class="fa-solid fa-cloud-sun text-amber-600 text-base mt-0.5"></i>
+        <div>
+          <span class="font-bold block">Mode Penyimpanan Lokal (Offline / Demo)</span>
+          <span>Google Sheets API URL belum diatur. Untuk mengaktifkan sinkronisasi Cloud otomatis ke HP Orang Tua, silakan atur Web App API URL di Mode Guru.</span>
+        </div>
+      </div>
+      <button onclick="showLoginView()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs whitespace-nowrap shadow">
+        Atur API Guru
+      </button>
+    </div>
+
+    <!-- NOTIFIKASI TOAST SYSTEM -->
+    <div id="toastAlert" class="hidden mb-4 p-4 rounded-xl shadow-md text-sm font-semibold transition-all duration-300 no-print"></div>
 
     <!-- ========================================== -->
     <!-- VIEW 1: PORTAL ORANG TUA (DEFAULT) -->
@@ -85,44 +124,59 @@
     <section id="parentView" class="space-y-6">
       
       <!-- HERO SEARCH BOX -->
-      <div class="bg-gradient-to-r from-blue-900 via-sky-800 to-emerald-800 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+      <div id="parentSearchArea" class="bg-gradient-to-r from-blue-900 via-sky-800 to-emerald-800 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div class="relative z-10 max-w-2xl">
-          <span class="bg-yellow-400 text-slate-900 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-3 shadow">
-            <i class="fa-solid fa-graduation-cap"></i> Portal Wali Murid
-          </span>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="bg-yellow-400 text-slate-900 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider inline-block shadow">
+              <i class="fa-solid fa-graduation-cap"></i> Portal Wali Murid
+            </span>
+            <span id="cloudStatusBadge" class="bg-emerald-500/30 text-emerald-300 border border-emerald-400/40 text-[11px] font-bold px-3 py-0.5 rounded-full flex items-center gap-1">
+              <i class="fa-solid fa-cloud"></i> Cloud Live Sync
+            </span>
+          </div>
+
           <h2 class="text-xl sm:text-2xl font-black mb-2">Cari & Pantau Perkembangan Anak</h2>
           <p class="text-sky-100 text-xs sm:text-sm mb-5 leading-relaxed">
-            Masukkan Nama atau NISN siswa di bawah ini untuk melihat catatan perkembangan, aktivitas belajar, serta pesan tugas dari guru.
+            Masukkan Nama atau NISN siswa di bawah ini untuk mencari catatan perkembangan harian, tugas, dan kegiatan sekolah langsung dari Google Sheets Guru.
           </p>
           
-          <!-- SEARCH INPUT -->
+          <!-- FORM PENCARIAN -->
           <div class="relative">
             <input type="text" id="parentSearchInput" onkeyup="filterParentView()" 
               placeholder="Ketik Nama Siswa atau NISN di sini..." 
-              class="w-full pl-11 pr-4 py-3.5 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm shadow-lg focus:outline-none focus:ring-4 focus:ring-yellow-400 transition">
+              class="w-full pl-11 pr-10 py-3.5 rounded-xl text-slate-900 placeholder-slate-400 font-semibold text-sm shadow-lg focus:outline-none focus:ring-4 focus:ring-yellow-400 transition">
             <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-base"></i>
+            <button onclick="fetchDataFromCloud()" class="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg text-xs" title="Refresh Data Cloud">
+              <i class="fa-solid fa-rotate"></i>
+            </button>
           </div>
         </div>
       </div>
 
-      <!-- STATUS & HASIL -->
-      <div class="flex items-center justify-between border-b pb-3 border-slate-300">
+      <!-- HEADING BAR RESULT -->
+      <div class="flex items-center justify-between border-b pb-3 border-slate-300 no-print">
         <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
-          <i class="fa-solid fa-users-viewfinder text-blue-600"></i> Daftar Siswa & Catatan Guru
+          <i class="fa-solid fa-users-viewfinder text-blue-600"></i> Catatan Perkembangan Anak
         </h3>
         <span id="studentCountBadge" class="text-xs bg-slate-200 text-slate-700 px-3 py-1 rounded-full font-bold">
           0 Siswa
         </span>
       </div>
 
-      <!-- DAFTAR KARTU SISWA -->
+      <!-- SPINNER LOADING -->
+      <div id="cloudLoadingSpinner" class="hidden py-12 text-center">
+        <div class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent"></div>
+        <p class="text-xs font-bold text-slate-500 mt-3">Mengambil data dari Cloud Google Sheets...</p>
+      </div>
+
+      <!-- KONTEN DAFTAR KARTU SISWA -->
       <div id="parentStudentList" class="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <!-- Dynamic Cards -->
+        <!-- Dynamic Cards rendered by JS -->
       </div>
     </section>
 
     <!-- ========================================== -->
-    <!-- VIEW 2: MODAL / TAMPILAN LOGIN GURU -->
+    <!-- VIEW 2: TAMPILAN LOGIN GURU -->
     <!-- ========================================== -->
     <section id="loginView" class="hidden max-w-md mx-auto my-10 bg-white rounded-2xl shadow-xl border border-slate-200 p-6 sm:p-8">
       <div class="text-center mb-6">
@@ -130,7 +184,7 @@
           <i class="fa-solid fa-user-lock"></i>
         </div>
         <h2 class="text-xl font-extrabold text-slate-800">Login Mode Guru</h2>
-        <p class="text-xs text-slate-500 mt-1">Masukkan kata sandi guru untuk mengelola siswa & meng-unggah catatan.</p>
+        <p class="text-xs text-slate-500 mt-1">Masukkan kata sandi khusus guru untuk mengelola data siswa & catatan.</p>
       </div>
 
       <form onsubmit="handleTeacherLogin(event)" class="space-y-4">
@@ -141,10 +195,11 @@
               class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 outline-none text-sm font-medium">
             <i class="fa-solid fa-key absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
           </div>
+          <p class="text-[11px] text-slate-400 mt-1">Kata sandi default: <code class="bg-slate-100 px-1 py-0.5 rounded font-bold text-slate-600">adminsedanjasa</code></p>
         </div>
 
         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-md text-sm flex items-center justify-center gap-2">
-          <i class="fa-solid fa-right-to-bracket"></i> Masuk Sekarang
+          <i class="fa-solid fa-right-to-bracket"></i> Masuk Dashboard Guru
         </button>
         <button type="button" onclick="switchToParentMode()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition">
           Batal & Kembali
@@ -157,29 +212,50 @@
     <!-- ========================================== -->
     <section id="teacherDashboard" class="hidden space-y-6">
       
-      <!-- TOOLBAR Aksi Guru -->
-      <div class="bg-white border-l-4 border-yellow-400 p-4 sm:p-5 rounded-2xl shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <i class="fa-solid fa-chalkboard-user text-blue-600"></i> Dashboard Guru / Admin
-          </h2>
-          <p class="text-xs text-slate-500 mt-0.5">Kelola data siswa via Import Excel massal, buat topik catatan, dan upload logo sekolah.</p>
+      <!-- TOOLBAR GURU & CONFIG CLOUD API -->
+      <div class="bg-white border-l-4 border-yellow-400 p-4 sm:p-5 rounded-2xl shadow-md space-y-4">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-chalkboard-user text-blue-600"></i> Dashboard Guru / Admin
+            </h2>
+            <p class="text-xs text-slate-500 mt-0.5">Kelola data siswa via Import Excel massal, buat topik catatan, dan kirim otomatis ke Cloud.</p>
+          </div>
+          
+          <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button onclick="openImportModal()" class="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-file-excel"></i> Import Excel / CSV
+            </button>
+            <button onclick="openAddTopicModal()" class="flex-1 md:flex-none bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-folder-plus"></i> Buat Topik
+            </button>
+            <button onclick="openLogoUploadModal()" class="flex-1 md:flex-none bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-3.5 py-2.5 rounded-xl shadow transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-image"></i> Upload Logo
+            </button>
+            <button onclick="openScriptGuideModal()" class="flex-1 md:flex-none bg-slate-800 hover:bg-slate-900 text-yellow-400 text-xs font-bold px-3.5 py-2.5 rounded-xl shadow transition flex items-center justify-center gap-2">
+              <i class="fa-solid fa-code"></i> Panduan Google Sheets
+            </button>
+          </div>
         </div>
-        
-        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <button onclick="openImportModal()" class="flex-1 md:flex-none bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-file-excel text-sm"></i> Import Excel / CSV
-          </button>
-          <button onclick="openAddTopicModal()" class="flex-1 md:flex-none bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-folder-plus text-sm"></i> Buat Topik
-          </button>
-          <button onclick="openLogoUploadModal()" class="flex-1 md:flex-none bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-image text-sm"></i> Upload Logo
-          </button>
+
+        <!-- PENGATURAN GOOGLE APPS SCRIPT API URL -->
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+          <label class="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+            <span><i class="fa-solid fa-link text-blue-600"></i> Google Apps Script Web App API URL (Google Sheets Sync):</span>
+            <span id="apiStatusBadge" class="text-[10px] px-2 py-0.5 rounded font-bold bg-slate-200 text-slate-600">Belum Terhubung</span>
+          </label>
+          <div class="flex gap-2">
+            <input type="url" id="googleScriptApiUrlInput" placeholder="https://script.google.com/macros/s/AKfycb.../exec" 
+              class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-blue-600 outline-none">
+            <button onclick="saveApiUrlSetting()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap shadow">
+              Simpan & Test API
+            </button>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">Tempelkan URL Web App dari Google Apps Script Anda di sini agar data di HP Orang Tua tersinkron secara online.</p>
         </div>
       </div>
 
-      <!-- RINGKASAN STATISTIK -->
+      <!-- STATISTIK -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
           <div class="p-3 bg-blue-50 text-blue-600 rounded-xl text-xl"><i class="fa-solid fa-users"></i></div>
@@ -204,15 +280,18 @@
         </div>
       </div>
 
-      <!-- MANAJEMEN SISWA & CATATAN -->
+      <!-- KELOLA SISWA & CATATAN -->
       <div class="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
         <div class="p-4 bg-slate-900 text-white flex flex-col sm:flex-row items-center justify-between gap-3">
           <h3 class="text-sm font-bold flex items-center gap-2">
             <i class="fa-solid fa-list-check text-yellow-400"></i> Kelola Catatan & Data Siswa
           </h3>
-          <div class="w-full sm:w-64">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
             <input type="text" id="teacherSearchInput" onkeyup="renderTeacherDashboard()" placeholder="Cari nama/NISN di dashboard..." 
-              class="w-full px-3 py-1.5 rounded-lg text-slate-900 text-xs font-semibold focus:outline-none">
+              class="w-full sm:w-64 px-3 py-1.5 rounded-lg text-slate-900 text-xs font-semibold focus:outline-none">
+            <button onclick="fetchDataFromCloud()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold shadow flex items-center gap-1">
+              <i class="fa-solid fa-sync"></i> Refresh
+            </button>
           </div>
         </div>
 
@@ -227,7 +306,7 @@
   <!-- ========================================== -->
   <!-- MODAL 1: UPLOAD LOGO SEKOLAH -->
   <!-- ========================================== -->
-  <div id="uploadLogoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div id="uploadLogoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
       <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
         <i class="fa-solid fa-image text-purple-600"></i> Upload Logo SD Negeri Jarit 01
@@ -239,7 +318,8 @@
           <input type="file" id="logoFileInput" accept="image/*" onchange="previewLogoUpload(event)" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
           <div id="logoPreviewBox" class="space-y-2 pointer-events-none">
             <i class="fa-solid fa-cloud-arrow-up text-4xl text-slate-400"></i>
-            <p class="text-xs font-bold text-slate-700">Klik di sini untuk memilih gambar Logo</p>            <p class="text-[11px] text-slate-400">Format JPG, PNG (Rasio disarankan 1:1)</p>
+            <p class="text-xs font-bold text-slate-700">Klik di sini untuk memilih gambar Logo</p>
+            <p class="text-[11px] text-slate-400">Format JPG, PNG (Rasio disarankan 1:1)</p>
           </div>
         </div>
 
@@ -259,22 +339,20 @@
   <!-- ========================================== -->
   <!-- MODAL 2: IMPORT EXCEL / CSV MASSAL -->
   <!-- ========================================== -->
-  <div id="importModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div id="importModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
     <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
       <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
         <i class="fa-solid fa-file-excel text-emerald-600"></i> Import Data Siswa dari Excel / CSV
       </h3>
       <p class="text-xs text-slate-500 mb-4">Unggah file Excel langsung (.xlsx / .csv) atau copy-paste tabel siswa.</p>
 
-      <!-- Unduh Template Button -->
       <div class="mb-4">
         <button onclick="downloadExcelTemplate()" class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-2 transition">
-          <i class="fa-solid fa-download"></i> Unduh Contoh Format File Excel (.xlsx)
+          <i class="fa-solid fa-download"></i> Unduh Format File Excel (.xlsx)
         </button>
       </div>
 
       <div class="space-y-4">
-        <!-- Opsi 1: File Excel -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Pilih File Excel (.xlsx / .xls / .csv)</label>
           <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" onchange="handleExcelFileSelect(event)" 
@@ -287,7 +365,6 @@
           <div class="flex-grow border-t border-slate-200"></div>
         </div>
 
-        <!-- Opsi 2: Text Area -->
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Tempel (Paste) Data dari Excel di Sini</label>
           <textarea id="excelPasteTextArea" rows="4" placeholder="Format: Nama Siswa, NISN&#10;Contoh:&#10;Ahmad Fauzi, 1234567890&#10;Siti Nur Aini, 0987654321" 
@@ -297,7 +374,7 @@
         <div class="flex justify-end gap-2 pt-2">
           <button type="button" onclick="closeModal('importModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl">Batal</button>
           <button type="button" onclick="processImportData()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow flex items-center gap-1.5">
-            <i class="fa-solid fa-file-import"></i> Proses Import Siswa
+            <i class="fa-solid fa-cloud-arrow-up"></i> Proses Import ke Cloud
           </button>
         </div>
       </div>
@@ -307,7 +384,7 @@
   <!-- ========================================== -->
   <!-- MODAL 3: TAMBAH TOPIK KUSTOM -->
   <!-- ========================================== -->
-  <div id="addTopicModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div id="addTopicModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
       <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
         <i class="fa-solid fa-folder-plus text-sky-600"></i> Buat Topik Catatan Baru
@@ -332,7 +409,7 @@
   <!-- ========================================== -->
   <!-- MODAL 4: TAMBAH CATATAN SISWA -->
   <!-- ========================================== -->
-  <div id="addNoteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div id="addNoteModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
     <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
       <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
         <i class="fa-solid fa-pen-to-square text-amber-500"></i> Tambah Catatan Siswa
@@ -362,44 +439,296 @@
 
         <div class="flex justify-end gap-2 pt-2">
           <button type="button" onclick="closeModal('addNoteModal')" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl">Batal</button>
-          <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow">Simpan Catatan</button>
+          <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow flex items-center gap-1.5">
+            <i class="fa-solid fa-paper-plane"></i> Kirim ke Cloud
+          </button>
         </div>
       </form>
     </div>
   </div>
 
+  <!-- ========================================== -->
+  <!-- MODAL 5: PANDUAN GOOGLE APPS SCRIPT -->
+  <!-- ========================================== -->
+  <div id="scriptGuideModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+      <h3 class="text-lg font-bold text-slate-800 mb-1 flex items-center gap-2">
+        <i class="fa-solid fa-code text-blue-600"></i> Kode Google Apps Script (Cloud Database)
+      </h3>
+      <p class="text-xs text-slate-500 mb-3">Copy-paste kode di bawah ini ke menu <b>Extensions > Apps Script</b> pada Google Sheets Anda, lalu Publish sebagai Web App (Access: <b>Anyone</b>).</p>
+
+      <div class="relative mb-4">
+        <textarea id="scriptCodeArea" readonly rows="12" class="w-full p-3 rounded-xl bg-slate-900 text-emerald-400 font-mono text-[11px] leading-relaxed focus:outline-none"></textarea>
+        <button onclick="copyScriptCode()" class="absolute top-2 right-2 bg-yellow-400 hover:bg-yellow-500 text-slate-900 font-bold px-3 py-1 rounded-lg text-xs shadow">
+          <i class="fa-solid fa-copy"></i> Salin Kode
+        </button>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="button" onclick="closeModal('scriptGuideModal')" class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-xl">Tutup Panduan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- FOOTER -->
-  <footer class="bg-slate-900 text-slate-400 text-xs py-4 border-t border-slate-800 mt-10">
+  <footer class="bg-slate-900 text-slate-400 text-xs py-4 border-t border-slate-800 mt-10 no-print">
     <div class="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-center sm:text-left">
       <div>
         <p class="font-bold text-slate-200">SD NEGERI JARIT 01</p>
-        <p class="text-[11px] text-slate-400">eBook Penghubung Guru dan Orang Tua</p>
+        <p class="text-[11px] text-slate-400">eBook Penghubung Guru dan Orang Tua (Cloud Sync)</p>
       </div>
       <p class="text-[11px]">© <span id="yearSpan"></span> SD Negeri Jarit 01. Hak Cipta Dilindungi.</p>
     </div>
   </footer>
 
   <!-- ========================================== -->
-  <!-- JAVASCRIPT APP LOGIC -->
+  <!-- JAVASCRIPT LOGIC CLOUD & APP -->
   <!-- ========================================== -->
   <script>
-    const STORAGE_KEY_STUDENTS = 'sdn_jarit_01_students_v2';
-    const STORAGE_KEY_TOPICS = 'sdn_jarit_01_topics_v2';
-    const STORAGE_KEY_CUSTOM_LOGO = 'sdn_jarit_01_logo_v2';
+    const STORAGE_KEY_STUDENTS = 'sdn_jarit_01_students_v3';
+    const STORAGE_KEY_TOPICS = 'sdn_jarit_01_topics_v3';
+    const STORAGE_KEY_CUSTOM_LOGO = 'sdn_jarit_01_logo_v3';
+    const STORAGE_KEY_API_URL = 'sdn_jarit_01_api_url_v3';
     const TEACHER_PASS = 'adminsedanjasa';
 
     let isTeacherLoggedIn = false;
     let students = [];
     let topics = [];
     let tempUploadedLogoBase64 = null;
+    let googleScriptApiUrl = '';
+
+    const APPS_SCRIPT_TEMPLATE = `// SKRIP GOOGLE APPS SCRIPT UNTUK CLOUD EBOOK SDN JARIT 01
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheetStudents = ss.getSheetByName("Siswa") || ss.insertSheet("Siswa");
+  var sheetNotes = ss.getSheetByName("Catatan") || ss.insertSheet("Catatan");
+  var sheetTopics = ss.getSheetByName("Topik") || ss.insertSheet("Topik");
+  
+  var studentsData = sheetStudents.getDataRange().getValues();
+  var notesData = sheetNotes.getDataRange().getValues();
+  var topicsData = sheetTopics.getDataRange().getValues();
+  
+  var topics = [];
+  for (var i = 1; i < topicsData.length; i++) {
+    if (topicsData[i][0]) topics.push(topicsData[i][0]);
+  }
+  if (topics.length === 0) topics = ['Catatan Perkembangan Anak', 'Catatan Kegiatan Sekolah', 'Tugas & Pembelajaran Rumah'];
+
+  var students = [];
+  for (var i = 1; i < studentsData.length; i++) {
+    if (studentsData[i][0]) {
+      var id = String(studentsData[i][0]);
+      var name = String(studentsData[i][1]);
+      var nisn = String(studentsData[i][2]);
+      
+      var studentNotes = [];
+      for (var j = 1; j < notesData.length; j++) {
+        if (String(notesData[j][0]) === id) {
+          studentNotes.push({
+            id: String(notesData[j][1]),
+            topic: String(notesData[j][2]),
+            content: String(notesData[j][3]),
+            date: String(notesData[j][4])
+          });
+        }
+      }
+      students.push({ id: id, name: name, nisn: nisn, notes: studentNotes });
+    }
+  }
+
+  var result = { status: "success", students: students, topics: topics };
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    if (data.action === "saveAll") {
+      var sheetStudents = ss.getSheetByName("Siswa") || ss.insertSheet("Siswa");
+      var sheetNotes = ss.getSheetByName("Catatan") || ss.insertSheet("Catatan");
+      var sheetTopics = ss.getSheetByName("Topik") || ss.insertSheet("Topik");
+      
+      sheetStudents.clear();
+      sheetNotes.clear();
+      sheetTopics.clear();
+      
+      sheetStudents.appendRow(["ID", "Nama Siswa", "NISN"]);
+      sheetNotes.appendRow(["StudentID", "NoteID", "Topik", "Isi Catatan", "Tanggal"]);
+      sheetTopics.appendRow(["Nama Topik"]);
+      
+      if (data.topics) {
+        data.topics.forEach(function(t) { sheetTopics.appendRow([t]); });
+      }
+      
+      if (data.students) {
+        data.students.forEach(function(s) {
+          sheetStudents.appendRow([s.id, s.name, s.nisn]);
+          if (s.notes) {
+            s.notes.forEach(function(n) {
+              sheetNotes.appendRow([s.id, n.id, n.topic, n.content, n.date]);
+            });
+          }
+        });
+      }
+      return ContentService.createTextOutput(JSON.stringify({status: "success"})).setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({status: "error", message: err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
 
     window.onload = function() {
       document.getElementById('yearSpan').textContent = new Date().getFullYear();
-      loadInitialData();
+      document.getElementById('scriptCodeArea').value = APPS_SCRIPT_TEMPLATE;
+      
+      googleScriptApiUrl = localStorage.getItem(STORAGE_KEY_API_URL) || '';
+      document.getElementById('googleScriptApiUrlInput').value = googleScriptApiUrl;
+
+      loadInitialLocalData();
       renderLogoHeader();
       renderAuthNav();
-      switchToParentMode();
+      updateApiStatusBadge();
+
+      if (googleScriptApiUrl) {
+        fetchDataFromCloud();
+      } else {
+        document.getElementById('cloudApiWarning').classList.remove('hidden');
+        switchToParentMode();
+      }
     };
+
+    // UPDATE API STATUS BADGE
+    function updateApiStatusBadge() {
+      const badge = document.getElementById('apiStatusBadge');
+      const cloudBadge = document.getElementById('cloudStatusBadge');
+      if (googleScriptApiUrl) {
+        badge.textContent = 'Terhubung Cloud API';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-emerald-100 text-emerald-800';
+        cloudBadge.classList.remove('hidden');
+      } else {
+        badge.textContent = 'Mode Offline (Penyimpanan Lokal)';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded font-bold bg-amber-100 text-amber-800';
+      }
+    }
+
+    function saveApiUrlSetting() {
+      const input = document.getElementById('googleScriptApiUrlInput').value.trim();
+      googleScriptApiUrl = input;
+      localStorage.setItem(STORAGE_KEY_API_URL, googleScriptApiUrl);
+      updateApiStatusBadge();
+      
+      if (googleScriptApiUrl) {
+        document.getElementById('cloudApiWarning').classList.add('hidden');
+        fetchDataFromCloud();
+        showToast('URL Google Apps Script disimpandan sedang mensinkronkan data Cloud!', 'success');
+      } else {
+        document.getElementById('cloudApiWarning').classList.remove('hidden');
+        showToast('URL API dikosongkan. Kembali ke Mode Offline Lokal.', 'info');
+      }
+    }
+
+    // FETCH DATA FROM GOOGLE SHEETS CLOUD
+    async function fetchDataFromCloud() {
+      if (!googleScriptApiUrl) {
+        filterParentView();
+        return;
+      }
+
+      document.getElementById('cloudLoadingSpinner').classList.remove('hidden');
+      try {
+        const response = await fetch(googleScriptApiUrl);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          if (data.students) students = data.students;
+          if (data.topics && data.topics.length > 0) topics = data.topics;
+
+          saveLocalStudentsData();
+          saveLocalTopicsData();
+
+          filterParentView();
+          if (isTeacherLoggedIn) renderTeacherDashboard();
+          showToast('Data terbaru berhasil disinkronkan dari Cloud!', 'success');
+        }
+      } catch (err) {
+        console.error('Fetch error:', err);
+        showToast('Gagal terhubung ke Google Sheets Cloud. Menampilkan data tersimpan.', 'error');
+        filterParentView();
+      } finally {
+        document.getElementById('cloudLoadingSpinner').classList.add('hidden');
+      }
+    }
+
+    // PUSH DATA TO GOOGLE SHEETS CLOUD
+    async function pushDataToCloud() {
+      saveLocalStudentsData();
+      saveLocalTopicsData();
+
+      if (!googleScriptApiUrl) return;
+
+      try {
+        await fetch(googleScriptApiUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'saveAll',
+            students: students,
+            topics: topics
+          })
+        });
+        showToast('Perubahan data berhasil dikirim ke Cloud!', 'success');
+      } catch (err) {
+        console.error('Push error:', err);
+        showToast('Terjadi kesalahan saat mengirim ke Cloud.', 'error');
+      }
+    }
+
+    // LOCAL DATA FALLBACK
+    function loadInitialLocalData() {
+      const storedTopics = localStorage.getItem(STORAGE_KEY_TOPICS);
+      const storedStudents = localStorage.getItem(STORAGE_KEY_STUDENTS);
+
+      if (storedTopics) {
+        topics = JSON.parse(storedTopics);
+      } else {
+        topics = ['Catatan Perkembangan Anak', 'Catatan Kegiatan Sekolah', 'Tugas & Pembelajaran Rumah'];
+      }
+
+      if (storedStudents) {
+        students = JSON.parse(storedStudents);
+      } else {
+        const today = new Date().toISOString().split('T')[0];
+        students = [
+          {
+            id: 'std_1',
+            name: 'Ahmad Fauzi',
+            nisn: '1234567890',
+            notes: [
+              { id: 'n1', topic: 'Catatan Perkembangan Anak', content: 'Ahmad menunjukkan pemahaman yang sangat baik pada mata pelajaran Matematika.', date: today }
+            ]
+          },
+          {
+            id: 'std_2',
+            name: 'Siti Nur Aini',
+            nisn: '0987654321',
+            notes: [
+              { id: 'n2', topic: 'Catatan Kegiatan Sekolah', content: 'Siti sangat aktif dalam kegiatan senam pagi bersama.', date: today }
+            ]
+          }
+        ];
+      }
+    }
+
+    function saveLocalStudentsData() {
+      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
+    }
+
+    function saveLocalTopicsData() {
+      localStorage.setItem(STORAGE_KEY_TOPICS, JSON.stringify(topics));
+    }
 
     // LOGO HEADER RENDERER
     function renderLogoHeader() {
@@ -472,53 +801,7 @@
       }
     }
 
-    // INITIAL DATA LOAD
-    function loadInitialData() {
-      const storedTopics = localStorage.getItem(STORAGE_KEY_TOPICS);
-      const storedStudents = localStorage.getItem(STORAGE_KEY_STUDENTS);
-
-      if (storedTopics) {
-        topics = JSON.parse(storedTopics);
-      } else {
-        topics = ['Catatan Perkembangan Anak', 'Catatan Kegiatan Sekolah', 'Tugas & Pembelajaran Rumah'];
-        localStorage.setItem(STORAGE_KEY_TOPICS, JSON.stringify(topics));
-      }
-
-      if (storedStudents) {
-        students = JSON.parse(storedStudents);
-      } else {
-        const today = new Date().toISOString().split('T')[0];
-        students = [
-          {
-            id: 'std_1',
-            name: 'Ahmad Fauzi',
-            nisn: '1234567890',
-            notes: [
-              { id: 'n1', topic: 'Catatan Perkembangan Anak', content: 'Ahmad menunjukkan pemahaman yang sangat baik pada mata pelajaran Matematika.', date: today }
-            ]
-          },
-          {
-            id: 'std_2',
-            name: 'Siti Nur Aini',
-            nisn: '0987654321',
-            notes: [
-              { id: 'n2', topic: 'Catatan Kegiatan Sekolah', content: 'Siti sangat aktif dalam kegiatan senam pagi bersama.', date: today }
-            ]
-          }
-        ];
-        saveStudentsData();
-      }
-    }
-
-    function saveStudentsData() {
-      localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(students));
-    }
-
-    function saveTopicsData() {
-      localStorage.setItem(STORAGE_KEY_TOPICS, JSON.stringify(topics));
-    }
-
-    // AUTH & SWITCHING VIEWS
+    // AUTH & NAVIGATION
     function renderAuthNav() {
       const area = document.getElementById('navAuthArea');
       if (isTeacherLoggedIn) {
@@ -584,7 +867,7 @@
       renderTeacherDashboard();
     }
 
-    // PARENT VIEW FILTER
+    // PARENT VIEW FILTER & CETAK
     function filterParentView() {
       const q = document.getElementById('parentSearchInput').value.toLowerCase().trim();
       const container = document.getElementById('parentStudentList');
@@ -606,7 +889,7 @@
 
       filtered.forEach(student => {
         const card = document.createElement('div');
-        card.className = 'bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col';
+        card.className = 'bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col print-card';
 
         let notesHTML = '';
         if (student.notes && student.notes.length > 0) {
@@ -631,9 +914,14 @@
               <h4 class="font-extrabold text-sm text-yellow-300">${escapeHTML(student.name)}</h4>
               <p class="text-xs text-slate-300">NISN: <span class="font-mono font-semibold">${escapeHTML(student.nisn)}</span></p>
             </div>
-            <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2.5 py-1 rounded-full font-bold">
-              SDN Jarit 01
-            </span>
+            <div class="flex items-center gap-2">
+              <button onclick="printStudentReport('${student.id}')" class="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg shadow no-print flex items-center gap-1">
+                <i class="fa-solid fa-print"></i> Cetak PDF
+              </button>
+              <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">
+                SDN Jarit 01
+              </span>
+            </div>
           </div>
           <div class="p-4 space-y-3 flex-grow">
             <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -646,6 +934,10 @@
         `;
         container.appendChild(card);
       });
+    }
+
+    function printStudentReport(studentId) {
+      window.print();
     }
 
     // TEACHER DASHBOARD RENDER
@@ -664,7 +956,7 @@
       if (filtered.length === 0) {
         container.innerHTML = `
           <div class="p-8 text-center text-slate-400 text-xs font-semibold">
-            Belum ada data siswa. Gunakan tombol "Import Excel / CSV" untuk memasukkan siswa secara massal.
+            Belum ada data siswa. Gunakan tombol "Import Excel / CSV" untuk memasukkan siswa secara massal ke Cloud.
           </div>
         `;
         return;
@@ -719,7 +1011,7 @@
       });
     }
 
-    // EXCEL / CSV IMPORT SYSTEM (SHEETJS PARSER)
+    // EXCEL / CSV IMPORT PARSER
     function openImportModal() {
       document.getElementById('excelFileInput').value = '';
       document.getElementById('excelPasteTextArea').value = '';
@@ -758,7 +1050,7 @@
           });
           document.getElementById('excelPasteTextArea').value = lines.join('\n');
         } catch (err) {
-          showToast('Gagal membaca file Excel. Pastikan format file benar.', 'error');
+          showToast('Gagal membaca file Excel.', 'error');
         }
       };
       reader.readAsArrayBuffer(file);
@@ -799,12 +1091,12 @@
       });
 
       if (count > 0) {
-        saveStudentsData();
+        pushDataToCloud();
         renderTeacherDashboard();
         closeModal('importModal');
-        showToast(`Berhasil mengimpor ${count} siswa secara massal!`, 'success');
+        showToast(`Berhasil mengimpor ${count} siswa! Data tersimpan di Cloud.`, 'success');
       } else {
-        showToast('Tidak ada data siswa baru yang dapat diimpor.', 'info');
+        showToast('Tidak ada data siswa baru yang diimpor.', 'info');
       }
     }
 
@@ -812,7 +1104,7 @@
     function deleteStudent(id) {
       if (confirm('Hapus data siswa ini beserta catatannya?')) {
         students = students.filter(s => s.id !== id);
-        saveStudentsData();
+        pushDataToCloud();
         renderTeacherDashboard();
         showToast('Data siswa berhasil dihapus.', 'info');
       }
@@ -828,8 +1120,8 @@
       const title = document.getElementById('newTopicTitle').value.trim();
       if (title && !topics.includes(title)) {
         topics.push(title);
-        saveTopicsData();
-        showToast(`Topik "${title}" berhasil ditambahkan!`, 'success');
+        pushDataToCloud();
+        showToast(`Topik "${title}" ditambahkan ke Cloud!`, 'success');
       }
       closeModal('addTopicModal');
       renderTeacherDashboard();
@@ -862,10 +1154,10 @@
           content: content,
           date: date
         });
-        saveStudentsData();
+        pushDataToCloud();
         closeModal('addNoteModal');
         renderTeacherDashboard();
-        showToast('Catatan siswa berhasil ditambahkan!', 'success');
+        showToast('Catatan berhasil dikirim ke Cloud!', 'success');
       }
     }
 
@@ -873,10 +1165,21 @@
       const student = students.find(s => s.id === studentId);
       if (student && student.notes) {
         student.notes = student.notes.filter(n => n.id !== noteId);
-        saveStudentsData();
+        pushDataToCloud();
         renderTeacherDashboard();
         showToast('Catatan berhasil dihapus.', 'info');
       }
+    }
+
+    function openScriptGuideModal() {
+      document.getElementById('scriptGuideModal').classList.remove('hidden');
+    }
+
+    function copyScriptCode() {
+      const area = document.getElementById('scriptCodeArea');
+      area.select();
+      document.execCommand('copy');
+      showToast('Kode Google Apps Script disalin ke clipboard!', 'success');
     }
 
     function closeModal(id) {
