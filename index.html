@@ -684,23 +684,44 @@
         showToast('Data belum dikirim. Atur URL Google Apps Script terlebih dahulu.', 'error');
         return false;
       }
+      // Ambil snapshot agar data yang diverifikasi sama dengan data yang dikirim.
+      const payloadStudents = JSON.parse(JSON.stringify(students));
+      const payloadTopics = JSON.parse(JSON.stringify(topics));
       saveLocalStudentsData();
       saveLocalTopicsData();
       try {
-        // text/plain + no-cors menghindari preflight CORS pada Google Apps Script.
-        // Respons POST bersifat opaque; keberhasilan diverifikasi dengan membaca ulang data.
+        // Apps Script menerima POST text/plain. Mode no-cors membuat respons tidak
+        // dapat dibaca, sehingga keberhasilan wajib diverifikasi melalui GET/JSONP.
         await fetch(googleScriptApiUrl, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'saveAll', students: students, topics: topics })
+          body: JSON.stringify({ action: 'saveAll', students: payloadStudents, topics: payloadTopics })
         });
-        await new Promise(resolve => setTimeout(resolve, 1200));
-        await fetchDataFromCloud();
-        return true;
+        let verified = false;
+        let lastCount = -1;
+        for (let attempt = 0; attempt < 6; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, attempt === 0 ? 1200 : 1000));
+          const result = await jsonpRequest(googleScriptApiUrl);
+          const cloud = Array.isArray(result && result.students) ? result.students : [];
+          lastCount = cloud.length;
+          const cloudIds = new Set(cloud.map(s => String(s.id || '')));
+          verified = result.status === 'success' && payloadStudents.every(s => cloudIds.has(String(s.id)));
+          if (verified) {
+            students = cloud.map(s => ({ id:String(s.id || ''), name:String(s.name || ''), nisn:String(s.nisn || ''), notes:Array.isArray(s.notes) ? s.notes : [] }));
+            topics = Array.isArray(result.topics) ? result.topics : payloadTopics;
+            saveLocalStudentsData();
+            saveLocalTopicsData();
+            filterParentView();
+            if (isTeacherLoggedIn) renderTeacherDashboard();
+            updateApiStatusBadge();
+            return true;
+          }
+        }
+        throw new Error('Verifikasi gagal. Data yang dikirim belum ditemukan lengkap di Google Sheets (terbaca ' + lastCount + ' siswa). Periksa deployment Apps Script dan fungsi doPost.');
       } catch (err) {
         console.error('Cloud write error:', err);
-        showToast('Gagal mengirim data ke Google Sheets: ' + err.message, 'error');
+        showToast('Gagal menyimpan ke Google Sheets: ' + err.message, 'error');
         return false;
       }
     }
@@ -1106,47 +1127,44 @@
       reader.readAsArrayBuffer(file);
     }
 
-    function processImportData() {
+    async function processImportData() {
       const text = document.getElementById('excelPasteTextArea').value.trim();
       if (!text) {
         showToast('Pilih file Excel atau tempelkan data terlebih dahulu.', 'error');
         return;
       }
-
       const lines = text.split(/\r?\n/);
+      const existingNisn = new Set(students.map(s => String(s.nisn || '').trim()));
       let count = 0;
-
       lines.forEach((line, idx) => {
         if (!line.trim()) return;
         if (idx === 0 && (line.toLowerCase().includes('nama') || line.toLowerCase().includes('nisn'))) return;
-
-        const parts = line.split(/[,;\t]/).map(p => p.trim().replace(/^["']|["']$/g, ''));
+        const parts = line.split(/[,;\t]/).map(p => p.trim().replace(/^['"]|['"]$/g, ''));
         if (parts.length >= 2) {
           const name = parts[0];
-          const nisn = parts[1];
-
-          if (name && nisn) {
-            const exists = students.some(s => s.nisn === nisn);
-            if (!exists) {
-              students.push({
-                id: 'std_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-                name: name,
-                nisn: nisn,
-                notes: []
-              });
-              count++;
-            }
+          const nisn = parts[1].replace(/\.0$/, '');
+          if (name && nisn && !existingNisn.has(nisn)) {
+            students.push({ id:'std_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8), name:name, nisn:nisn, notes:[] });
+            existingNisn.add(nisn);
+            count++;
           }
         }
       });
-
       if (count > 0) {
-        pushDataToCloud();
-        renderTeacherDashboard();
-        closeModal('importModal');
-        showToast(`Berhasil mengimpor ${count} siswa! Data tersimpan di Cloud.`, 'success');
+        const button = document.querySelector('#importModal button[onclick="processImportData()"]');
+        if (button) { button.disabled = true; button.textContent = 'Menyimpan...'; }
+        const saved = await pushDataToCloud();
+        if (button) { button.disabled = false; button.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Proses Import ke Cloud'; }
+        if (saved) {
+          renderTeacherDashboard();
+          closeModal('importModal');
+          showToast('Berhasil menyimpan ' + count + ' siswa baru ke Google Sheets.', 'success');
+        } else {
+          renderTeacherDashboard();
+          showToast('Data belum terverifikasi tersimpan di Google Sheets. Jangan impor ulang; periksa Apps Script terlebih dahulu.', 'error');
+        }
       } else {
-        showToast('Tidak ada data siswa baru yang diimpor.', 'info');
+        showToast('Tidak ada data siswa baru yang diimpor. Periksa NISN atau format data.', 'info');
       }
     }
 
