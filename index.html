@@ -1078,8 +1078,7 @@
         renderTeacherDashboard();
         showToast('Gagal menyimpan perubahan: ' + err.message, 'error');
       } finally {
-        saveButton.disabled = false;
-        saveButton.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Simpan Perubahan';
+        // Tombol Simpan Perubahan hanya ada pada modal edit siswa, bukan pada proses impor.
       }
     }
 
@@ -1133,6 +1132,8 @@
         showToast('Pilih file Excel atau tempelkan data terlebih dahulu.', 'error');
         return;
       }
+      const button = document.querySelector('#importModal button[onclick="processImportData()"]');
+      const originalStudents = JSON.parse(JSON.stringify(students));
       const lines = text.split(/\r?\n/);
       const existingNisn = new Set(students.map(s => String(s.nisn || '').trim()));
       let count = 0;
@@ -1150,21 +1151,34 @@
           }
         }
       });
-      if (count > 0) {
-        const button = document.querySelector('#importModal button[onclick="processImportData()"]');
-        if (button) { button.disabled = true; button.textContent = 'Menyimpan...'; }
-        const saved = await pushDataToCloud();
-        if (button) { button.disabled = false; button.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Proses Import ke Cloud'; }
-        if (saved) {
-          renderTeacherDashboard();
-          closeModal('importModal');
-          showToast('Berhasil menyimpan ' + count + ' siswa baru ke Google Sheets.', 'success');
-        } else {
-          renderTeacherDashboard();
-          showToast('Data belum terverifikasi tersimpan di Google Sheets. Jangan impor ulang; periksa Apps Script terlebih dahulu.', 'error');
-        }
-      } else {
+      if (count <= 0) {
         showToast('Tidak ada data siswa baru yang diimpor. Periksa NISN atau format data.', 'info');
+        return;
+      }
+      if (button) { button.disabled = true; button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan dan memverifikasi...'; }
+      try {
+        const saved = await pushDataToCloud();
+        if (!saved) {
+          students = originalStudents;
+          saveLocalStudentsData();
+          renderTeacherDashboard();
+          showToast('Penyimpanan belum terverifikasi. Data impor dibatalkan di browser ini; periksa Google Sheets sebelum mencoba lagi.', 'error');
+          return;
+        }
+        renderTeacherDashboard();
+        closeModal('importModal');
+        showToast('Berhasil menyimpan ' + count + ' siswa baru ke Google Sheets.', 'success');
+      } catch (err) {
+        students = originalStudents;
+        saveLocalStudentsData();
+        renderTeacherDashboard();
+        console.error('Import error:', err);
+        showToast('Proses impor mengalami kendala: ' + (err.message || err), 'error');
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Proses Import ke Cloud';
+        }
       }
     }
 
