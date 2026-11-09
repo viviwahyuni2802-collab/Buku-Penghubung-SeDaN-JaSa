@@ -1027,6 +1027,15 @@
       document.getElementById('editStudentId').value = student.id;
       document.getElementById('editStudentName').value = student.name || '';
       document.getElementById('editStudentNisn').value = student.nisn || '';
+
+      // Setiap kali modal dibuka untuk siswa baru, pulihkan tombol ke kondisi awal.
+      // Ini juga menangani tombol yang tertinggal pada status loading dari sesi sebelumnya.
+      const saveButton = document.getElementById('saveEditedStudentButton');
+      if (saveButton) {
+        saveButton.disabled = false;
+        saveButton.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Simpan Perubahan';
+      }
+
       document.getElementById('editStudentModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('editStudentName').focus(), 50);
     }
